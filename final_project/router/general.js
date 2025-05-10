@@ -3,6 +3,7 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
+const axios = require('axios');
 
 public_users.post("/register", (req, res) => {
     const { username, password } = req.body;
@@ -78,6 +79,62 @@ public_users.get('/review/:isbn',function (req, res) {
     }
 });
 
+public_users.get('/async-books', async (req, res) => {
+    try {
+      const booksData = await new Promise((resolve) => {
+        resolve(books);
+      });
+  
+      res.status(200).json(booksData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch books." });
+    }
+  });
+  
+  public_users.get('/async-isbn/:isbn', async (req, res) => {
+    const isbn = req.params.isbn;
+    try {
+      const bookData = await new Promise((resolve, reject) => {
+        if (books[isbn]) {
+          resolve(books[isbn]);
+        } else {
+          reject("Book not found");
+        }
+      });
+  
+      res.status(200).json(bookData);
+    } catch (error) {
+      res.status(404).json({ message: error });
+    }
+  });
+  
+  public_users.get('/async-author/:author', async (req, res) => {
+    const author = req.params.author.toLowerCase();
+    try {
+        const filteredBooks = await new Promise((resolve) => {
+            const results = Object.values(books).filter(book => book.author.toLowerCase() === author);
+            resolve(results);
+        });
 
+        if (filteredBooks.length === 0) throw "mo Books found for this author";
+        res.status(200).json(filteredBooks);
+    } catch(error) {
+        res.status(404).json({message: error});
+    }
+  });
 
+  public_users.get('/async-title/:title', async (req, res) => {
+    const title = req.params.title.toLowerCase();
+    try {
+        const filteredBooks = await new Promise((resolve) => {
+            const results = Object.values(books).filter(book => book.title.toLowerCase() === title);
+            resolve(results);
+        });
+
+        if(filteredBooks.length === 0) throw "no Books found with this title";
+        res.status(200).json(filteredBooks);
+    } catch (error) {
+        res.status(404).json({message: error})
+    }
+  });
 module.exports.general = public_users;
